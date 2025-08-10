@@ -122,6 +122,16 @@ void generateSphere(float radius, int stacks, int sectors,
     }
 }
 
+// Planet data structure
+struct Planet {
+    float size;           // Relative size
+    float orbitRadius;    // Distance from sun (scaled)
+    float orbitSpeed;     // Orbital speed
+    float rotationSpeed;  // Self-rotation speed
+    glm::vec3 color;     // Planet color tint
+    const char* name;    // For debugging
+};
+
 // ==================== MAIN FUNCTION ==================== //
 int main() {
     if (!glfwInit()) {
@@ -133,7 +143,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Kepler", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1200, 900, "Solar System - Kepler", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
@@ -146,7 +156,7 @@ int main() {
         return -1;
     }
 
-    glViewport(0, 0, 800, 600);
+    glViewport(0, 0, 1200, 900);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     // Generate sphere data (shared for all planets/sun)
@@ -178,57 +188,77 @@ int main() {
     unsigned int shaderProgram = createShaderProgram("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl");
 
     glEnable(GL_DEPTH_TEST);
+    glClearColor(0.05f, 0.05f, 0.15f, 1.0f); // Dark space background
 
     // Get uniform locations once (for efficiency)
     unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
     unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
     unsigned int projLoc = glGetUniformLocation(shaderProgram, "projection");
-    unsigned int colorLoc = glGetUniformLocation(shaderProgram, "objectColor");  // New
+    unsigned int colorLoc = glGetUniformLocation(shaderProgram, "objectColor");
+
+    // Define all planets with realistic relative data
+    // Distances scaled down significantly for visibility (real ratios maintained)
+    // Orbital speeds inverted (closer planets orbit faster)
+    std::vector<Planet> planets = {
+        // size, orbit, orbit_speed, rotation_speed, color, name
+        {0.15f, 2.5f,  4.15f, 8.0f,  {0.8f, 0.7f, 0.6f}, "Mercury"},
+        {0.25f, 3.2f,  1.62f, 2.0f,  {1.0f, 0.8f, 0.4f}, "Venus"},
+        {0.28f, 4.0f,  1.00f, 4.0f,  {0.2f, 0.6f, 1.0f}, "Earth"},
+        {0.18f, 4.8f,  0.53f, 3.8f,  {1.0f, 0.4f, 0.2f}, "Mars"},
+        {0.85f, 7.0f,  0.084f, 6.0f, {1.0f, 0.8f, 0.6f}, "Jupiter"},
+        {0.75f, 9.5f,  0.034f, 5.5f, {1.0f, 0.9f, 0.7f}, "Saturn"},
+        {0.45f, 12.0f, 0.012f, 4.5f, {0.4f, 0.8f, 1.0f}, "Uranus"},
+        {0.42f, 15.0f, 0.006f, 4.2f, {0.2f, 0.4f, 1.0f}, "Neptune"},
+        {0.08f, 18.0f, 0.004f, 2.0f, {0.8f, 0.7f, 0.6f}, "Pluto"}
+    };
 
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
 
-        float time = (float)glfwGetTime();
+        float time = (float)glfwGetTime() * 0.3f; // Slow down overall animation
 
-        // View and projection (shared for all objects)
+        // Camera positioned above and at an angle to view entire solar system
         glm::mat4 view = glm::mat4(1.0f);
-        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -10.0f));  // Pull camera back for better view
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -25.0f));  // Pull back and up
+        view = glm::rotate(view, glm::radians(25.0f), glm::vec3(1.0f, 0.0f, 0.0f)); // Tilt down slightly
+
+        glm::mat4 projection = glm::perspective(glm::radians(60.0f), 1200.0f / 900.0f, 0.1f, 100.0f);
 
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
-        glBindVertexArray(VAO);  // Bind VAO once (since shared)
+        glBindVertexArray(VAO);
 
-        // Draw Sun
+        // Draw Sun at center
         glm::mat4 sunModel = glm::mat4(1.0f);
-        sunModel = glm::rotate(sunModel, time * 0.2f, glm::vec3(0.0f, 1.0f, 0.0f));  // Slow self-rotation
-        sunModel = glm::scale(sunModel, glm::vec3(1.5f, 1.5f, 1.5f));  // Larger
+        sunModel = glm::rotate(sunModel, time * 0.5f, glm::vec3(0.0f, 1.0f, 0.0f));  // Slow self-rotation
+        sunModel = glm::scale(sunModel, glm::vec3(1.2f, 1.2f, 1.2f));  // Sun size
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(sunModel));
-        glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);  // Yellow tint (multiplies gradient)
+        glUniform3f(colorLoc, 1.0f, 1.0f, 0.3f);  // Bright yellow
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
-        // Draw Planet 1 (e.g., Earth)
-        glm::mat4 earthModel = glm::mat4(1.0f);
-        earthModel = glm::scale(earthModel, glm::vec3(0.5f, 0.5f, 0.5f));  // Smaller
-        earthModel = glm::rotate(earthModel, time * 2.0f, glm::vec3(0.0f, 1.0f, 0.0f));  // Self-rotation
-        earthModel = glm::translate(earthModel, glm::vec3(6.0f, 0.0f, 0.0f));  // Orbit radius
-        earthModel = glm::rotate(earthModel, time * 0.5f, glm::vec3(0.0f, 1.0f, 0.0f));  // Orbit around sun
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(earthModel));
-        glUniform3f(colorLoc, 0.2f, 0.5f, 1.0f);  // Blue tint
-        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+        // Draw all planets
+        for (const auto& planet : planets) {
+            glm::mat4 planetModel = glm::mat4(1.0f);
 
-        // Draw Planet 2 (e.g., Mars - example of another planet)
-        glm::mat4 marsModel = glm::mat4(1.0f);
-        marsModel = glm::scale(marsModel, glm::vec3(0.4f, 0.4f, 0.4f));  // Even smaller
-        marsModel = glm::rotate(marsModel, time * 1.5f, glm::vec3(0.0f, 1.0f, 0.0f));  // Self-rotation
-        marsModel = glm::translate(marsModel, glm::vec3(10.0f, 0.0f, 0.0f));  // Larger orbit radius
-        marsModel = glm::rotate(marsModel, time * 0.3f, glm::vec3(0.0f, 1.0f, 0.0f));  // Slower orbit
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(marsModel));
-        glUniform3f(colorLoc, 1.0f, 0.3f, 0.1f);  // Red tint
-        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+            // Scale the planet
+            planetModel = glm::scale(planetModel, glm::vec3(planet.size));
+
+            // Self rotation
+            planetModel = glm::rotate(planetModel, time * planet.rotationSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
+
+            // Position at orbit distance
+            planetModel = glm::translate(planetModel, glm::vec3(planet.orbitRadius / planet.size, 0.0f, 0.0f));
+
+            // Orbital rotation around sun
+            planetModel = glm::rotate(planetModel, time * planet.orbitSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
+
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(planetModel));
+            glUniform3f(colorLoc, planet.color.x, planet.color.y, planet.color.z);
+            glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -237,7 +267,7 @@ int main() {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
-    glDeleteProgram(shaderProgram);  // New: Cleanup shader
+    glDeleteProgram(shaderProgram);
 
     glfwTerminate();
     return 0;
