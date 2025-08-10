@@ -149,27 +149,24 @@ int main() {
     glViewport(0, 0, 800, 600);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    // Generate sphere data
+    // Generate sphere data (shared for all planets/sun)
     std::vector<float> vertices;
     std::vector<unsigned int> indices;
-    generateSphere(1.0f, 64, 64, vertices, indices);  // Radius 1, 20 stacks/sectors for smoothness
+    generateSphere(1.0f, 64, 64, vertices, indices);
 
-    unsigned int VAO, VBO, EBO;  // New: Add EBO for indices
+    unsigned int VAO, VBO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
 
     glBindVertexArray(VAO);
 
-    // VBO: Vertices
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
 
-    // EBO: Indices
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
-    // Attributes (same as cube)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
@@ -182,36 +179,65 @@ int main() {
 
     glEnable(GL_DEPTH_TEST);
 
+    // Get uniform locations once (for efficiency)
+    unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
+    unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
+    unsigned int projLoc = glGetUniformLocation(shaderProgram, "projection");
+    unsigned int colorLoc = glGetUniformLocation(shaderProgram, "objectColor");  // New
+
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
 
-        // Model: Rotate over time (same as cube)
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
+        float time = (float)glfwGetTime();
 
-        // View and projection (same)
+        // View and projection (shared for all objects)
         glm::mat4 view = glm::mat4(1.0f);
-        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -10.0f));  // Pull camera back for better view
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
-        // Upload uniforms (same)
-        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
-        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);  // New: Draw with indices
+        glBindVertexArray(VAO);  // Bind VAO once (since shared)
+
+        // Draw Sun
+        glm::mat4 sunModel = glm::mat4(1.0f);
+        sunModel = glm::rotate(sunModel, time * 0.2f, glm::vec3(0.0f, 1.0f, 0.0f));  // Slow self-rotation
+        sunModel = glm::scale(sunModel, glm::vec3(1.5f, 1.5f, 1.5f));  // Larger
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(sunModel));
+        glUniform3f(colorLoc, 1.0f, 1.0f, 0.0f);  // Yellow tint (multiplies gradient)
+        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+
+        // Draw Planet 1 (e.g., Earth)
+        glm::mat4 earthModel = glm::mat4(1.0f);
+        earthModel = glm::scale(earthModel, glm::vec3(0.5f, 0.5f, 0.5f));  // Smaller
+        earthModel = glm::rotate(earthModel, time * 2.0f, glm::vec3(0.0f, 1.0f, 0.0f));  // Self-rotation
+        earthModel = glm::translate(earthModel, glm::vec3(6.0f, 0.0f, 0.0f));  // Orbit radius
+        earthModel = glm::rotate(earthModel, time * 0.5f, glm::vec3(0.0f, 1.0f, 0.0f));  // Orbit around sun
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(earthModel));
+        glUniform3f(colorLoc, 0.2f, 0.5f, 1.0f);  // Blue tint
+        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+
+        // Draw Planet 2 (e.g., Mars - example of another planet)
+        glm::mat4 marsModel = glm::mat4(1.0f);
+        marsModel = glm::scale(marsModel, glm::vec3(0.4f, 0.4f, 0.4f));  // Even smaller
+        marsModel = glm::rotate(marsModel, time * 1.5f, glm::vec3(0.0f, 1.0f, 0.0f));  // Self-rotation
+        marsModel = glm::translate(marsModel, glm::vec3(10.0f, 0.0f, 0.0f));  // Larger orbit radius
+        marsModel = glm::rotate(marsModel, time * 0.3f, glm::vec3(0.0f, 1.0f, 0.0f));  // Slower orbit
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(marsModel));
+        glUniform3f(colorLoc, 1.0f, 0.3f, 0.1f);  // Red tint
+        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    // Cleanup
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
+    glDeleteProgram(shaderProgram);  // New: Cleanup shader
 
     glfwTerminate();
     return 0;
