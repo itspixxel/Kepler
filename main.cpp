@@ -64,9 +64,113 @@ unsigned int createShaderProgram(const char* vertexPath, const char* fragmentPat
     return shaderProgram;
 }
 
-// ==================== WINDOW RESIZE CALLBACK ==================== //
+// ==================== CAMERA CONTROLS ==================== //
+struct Camera {
+    // Current values (smoothly interpolated)
+    float radius = 25.0f;
+    float theta = 0.0f;
+    float phi = glm::radians(25.0f);
+
+    // Target values (what we're moving towards)
+    float targetRadius = 25.0f;
+    float targetTheta = 0.0f;
+    float targetPhi = glm::radians(25.0f);
+
+    float minRadius = 5.0f;
+    float maxRadius = 80.0f;
+    glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);
+
+    // Smoothing parameters
+    float smoothingSpeed = 8.0f;  // Higher = faster interpolation
+
+    void update(float deltaTime) {
+        // Smooth interpolation towards target values
+        float lerpFactor = 1.0f - exp(-smoothingSpeed * deltaTime);
+
+        radius = glm::mix(radius, targetRadius, lerpFactor);
+        theta = glm::mix(theta, targetTheta, lerpFactor);
+        phi = glm::mix(phi, targetPhi, lerpFactor);
+    }
+
+    glm::vec3 getPosition() const {
+        float x = radius * cos(phi) * cos(theta);
+        float y = radius * sin(phi);
+        float z = radius * cos(phi) * sin(theta);
+        return target + glm::vec3(x, y, z);
+    }
+
+    glm::mat4 getViewMatrix() const {
+        return glm::lookAt(getPosition(), target, glm::vec3(0.0f, 1.0f, 0.0f));
+    }
+};
+
+// Global camera instance
+Camera camera;
+
+// Mouse state
+bool mousePressed = false;
+float lastX, lastY;
+bool validLastPos = false;  // Track if we have a valid last position
+
+// ==================== INPUT CALLBACKS ==================== //
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
+}
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    if (!mousePressed) {
+        validLastPos = false;  // Reset when not pressed
+        return;
+    }
+
+    // Only calculate offset if we have a valid previous position
+    if (validLastPos) {
+        float xoffset = xpos - lastX;
+        float yoffset = lastY - ypos; // Reversed since y-coordinates go from bottom to top
+
+        float sensitivity = 0.005f;
+        xoffset *= sensitivity;
+        yoffset *= sensitivity;
+
+        camera.targetTheta += xoffset;  // Update target, not current
+        camera.targetPhi += yoffset;
+
+        // Constrain vertical angle
+        if (camera.targetPhi > glm::radians(89.0f))
+            camera.targetPhi = glm::radians(89.0f);
+        if (camera.targetPhi < glm::radians(-89.0f))
+            camera.targetPhi = glm::radians(-89.0f);
+    }
+
+    // Always update last position when mouse is pressed
+    lastX = xpos;
+    lastY = ypos;
+    validLastPos = true;
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            mousePressed = true;
+            validLastPos = false;  // Will be set to true on first mouse move
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        }
+        else if (action == GLFW_RELEASE) {
+            mousePressed = false;
+            validLastPos = false;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+    }
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    camera.targetRadius -= (float)yoffset * 2.0f;  // Update target, not current
+
+    // Constrain zoom
+    if (camera.targetRadius < camera.minRadius)
+        camera.targetRadius = camera.minRadius;
+    if (camera.targetRadius > camera.maxRadius)
+        camera.targetRadius = camera.maxRadius;
 }
 
 // Function to generate sphere vertices and indices
@@ -189,6 +293,9 @@ int main() {
 
     glViewport(0, 0, 1200, 900);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetScrollCallback(window, scroll_callback);
 
     // Generate sphere data (shared for all planets/sun)
     std::vector<float> vertices;
@@ -268,19 +375,27 @@ int main() {
         {0.08f, 18.0f, 0.004f, 2.0f, {0.8f, 0.7f, 0.6f}, "Pluto"}
     };
 
+    // Timing for smooth interpolation
+    float lastTime = 0.0f;
+
     while (!glfwWindowShouldClose(window)) {
+        // Calculate delta time for smooth interpolation
+        float currentTime = (float)glfwGetTime();
+        float deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+
+        // Update camera with smooth interpolation
+        camera.update(deltaTime);
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
 
-        float time = (float)glfwGetTime() * 0.3f; // Slow down overall animation
+        float time = currentTime * 0.3f; // Slow down overall animation
 
-        // Camera positioned above and at an angle to view entire solar system
-        glm::mat4 view = glm::mat4(1.0f);
-        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -25.0f));  // Pull back and up
-        view = glm::rotate(view, glm::radians(25.0f), glm::vec3(1.0f, 0.0f, 0.0f)); // Tilt down slightly
-
-        glm::mat4 projection = glm::perspective(glm::radians(60.0f), 1200.0f / 900.0f, 0.1f, 100.0f);
+        // Use camera system for view matrix
+        glm::mat4 view = camera.getViewMatrix();
+        glm::mat4 projection = glm::perspective(glm::radians(60.0f), 1200.0f / 900.0f, 0.1f, 150.0f);
 
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));

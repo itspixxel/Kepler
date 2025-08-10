@@ -1,5 +1,9 @@
 ﻿  main.cpp
-E:\Indie Projects\OpenGL\Kepler\main.cpp(297,56): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
-E:\Indie Projects\OpenGL\Kepler\main.cpp(310,50): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
-E:\Indie Projects\OpenGL\Kepler\main.cpp(330,54): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(128,23): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(129,23): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(146,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(147,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(412,56): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(425,50): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(445,54): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
   Kepler.vcxproj -> E:\Indie Projects\OpenGL\Kepler\x64\Debug\Kepler.exe
