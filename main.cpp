@@ -175,7 +175,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    camera.targetRadius -= (float)yoffset * 2.0f;  // Update target, not current
+    camera.targetRadius -= (float)yoffset * 20.0f;  // Update target, not current
 
     // Constrain zoom
     if (camera.targetRadius < camera.minRadius)
@@ -432,10 +432,11 @@ int main() {
     unsigned int shininessLoc = glGetUniformLocation(shaderProgram, "shininess");
 
     // Planet data with enhanced material properties
-    float sunScale = 13.91f;
+    float sunScale = 0.686340f;
     std::vector<Planet> planets = {
         // Mercury - metallic surface, high specularity
-        {0.0488f, 5.79f,  4.15f, 8.0f,  {0.8f, 0.7f, 0.6f}, "Mercury", {}, 0.15f, 0.8f, 64},
+		// size, orbitRadius, orbitSpeed, rotationSpeed, color, name, moons, ambientStrength, specularStrength, shininess
+        {0.024397, 5.5776f,  4.15f, 8.0f,  {0.8f, 0.7f, 0.6f}, "Mercury", {}, 0.15f, 0.8f, 64},
 
         // Venus - thick atmosphere, low specularity
         {0.1210f, 10.82f,  1.62f, 2.0f,  {1.0f, 0.8f, 0.4f}, "Venus", {}, 0.2f, 0.1f, 8},
