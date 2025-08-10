@@ -7,6 +7,8 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <vector>
+#include <cmath>
 
 // ==================== SHADER LOADING HELPERS ==================== //
 unsigned int compileShader(unsigned int type, const char* source) {
@@ -67,6 +69,59 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
+// Function to generate sphere vertices and indices
+void generateSphere(float radius, int stacks, int sectors,
+    std::vector<float>& vertices, std::vector<unsigned int>& indices) {
+    const float PI = 3.14159265359f;
+
+    // Generate unique vertices
+    for (int i = 0; i <= stacks; ++i) {
+        float theta = PI * static_cast<float>(i) / stacks;
+        float sinTheta = std::sin(theta);
+        float cosTheta = std::cos(theta);
+
+        for (int j = 0; j <= sectors; ++j) {
+            float phi = 2.0f * PI * static_cast<float>(j) / sectors;
+            float x = radius * sinTheta * std::cos(phi);
+            float y = radius * sinTheta * std::sin(phi);
+            float z = radius * cosTheta;
+
+            // Color: Gradient based on position (normalize to 0-1)
+            float r = (x + radius) / (2.0f * radius);
+            float g = (y + radius) / (2.0f * radius);
+            float b = (z + radius) / (2.0f * radius);
+
+            vertices.push_back(x);
+            vertices.push_back(y);
+            vertices.push_back(z);
+            vertices.push_back(r);
+            vertices.push_back(g);
+            vertices.push_back(b);
+        }
+    }
+
+    // Generate indices for triangles
+    int verticesPerRow = sectors + 1;
+    for (int i = 0; i < stacks; ++i) {
+        for (int j = 0; j < sectors; ++j) {
+            int topLeft = i * verticesPerRow + j;
+            int topRight = topLeft + 1;
+            int bottomLeft = (i + 1) * verticesPerRow + j;
+            int bottomRight = bottomLeft + 1;
+
+            // First triangle
+            indices.push_back(topLeft);
+            indices.push_back(bottomLeft);
+            indices.push_back(topRight);
+
+            // Second triangle
+            indices.push_back(topRight);
+            indices.push_back(bottomLeft);
+            indices.push_back(bottomRight);
+        }
+    }
+}
+
 // ==================== MAIN FUNCTION ==================== //
 int main() {
     if (!glfwInit()) {
@@ -94,70 +149,29 @@ int main() {
     glViewport(0, 0, 800, 600);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    // Cube vertex data with corrected winding order for outward normals
-    float vertices[] = {
-        // positions           // colors
-        // Front face
-        -0.5f, -0.5f,  0.5f,   1.0f, 0.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,   0.0f, 1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,   1.0f, 1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,   1.0f, 0.0f, 0.0f,
+    // Generate sphere data
+    std::vector<float> vertices;
+    std::vector<unsigned int> indices;
+    generateSphere(1.0f, 64, 64, vertices, indices);  // Radius 1, 20 stacks/sectors for smoothness
 
-        // Back face
-         0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,   1.0f, 0.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,   0.5f, 0.5f, 0.5f,
-        -0.5f,  0.5f, -0.5f,   0.5f, 0.5f, 0.5f,
-         0.5f,  0.5f, -0.5f,   0.2f, 0.8f, 0.3f,
-         0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 1.0f,
-
-         // Left face
-         -0.5f, -0.5f, -0.5f,   0.3f, 0.1f, 0.7f,
-         -0.5f, -0.5f,  0.5f,   0.9f, 0.6f, 0.1f,
-         -0.5f,  0.5f,  0.5f,   0.8f, 0.2f, 0.5f,
-         -0.5f,  0.5f,  0.5f,   0.8f, 0.2f, 0.5f,
-         -0.5f,  0.5f, -0.5f,   0.1f, 0.3f, 0.9f,
-         -0.5f, -0.5f, -0.5f,   0.3f, 0.1f, 0.7f,
-
-         // Right face
-          0.5f, -0.5f,  0.5f,   0.4f, 0.9f, 0.4f,
-          0.5f, -0.5f, -0.5f,   0.2f, 0.2f, 0.8f,
-          0.5f,  0.5f, -0.5f,   0.7f, 0.1f, 0.1f,
-          0.5f,  0.5f, -0.5f,   0.7f, 0.1f, 0.1f,
-          0.5f,  0.5f,  0.5f,   0.6f, 0.6f, 0.0f,
-          0.5f, -0.5f,  0.5f,   0.4f, 0.9f, 0.4f,
-
-          // Bottom face
-          -0.5f, -0.5f, -0.5f,   0.1f, 0.5f, 0.5f,
-           0.5f, -0.5f, -0.5f,   0.5f, 0.1f, 0.3f,
-           0.5f, -0.5f,  0.5f,   0.2f, 0.9f, 0.7f,
-           0.5f, -0.5f,  0.5f,   0.2f, 0.9f, 0.7f,
-          -0.5f, -0.5f,  0.5f,   0.9f, 0.3f, 0.3f,
-          -0.5f, -0.5f, -0.5f,   0.1f, 0.5f, 0.5f,
-
-          // Top face
-          -0.5f,  0.5f, -0.5f,   0.5f, 0.8f, 0.1f,
-           0.5f,  0.5f, -0.5f,   0.6f, 0.2f, 0.8f,
-           0.5f,  0.5f,  0.5f,   0.9f, 0.9f, 0.2f,
-           0.5f,  0.5f,  0.5f,   0.9f, 0.9f, 0.2f,
-          -0.5f,  0.5f,  0.5f,   0.4f, 0.4f, 0.9f,
-          -0.5f,  0.5f, -0.5f,   0.5f, 0.8f, 0.1f
-    };
-
-    unsigned int VAO, VBO;
+    unsigned int VAO, VBO, EBO;  // New: Add EBO for indices
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
 
     glBindVertexArray(VAO);
 
+    // VBO: Vertices
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
 
+    // EBO: Indices
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+
+    // Attributes (same as cube)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
@@ -173,32 +187,31 @@ int main() {
 
         glUseProgram(shaderProgram);
 
+        // Model: Rotate over time (same as cube)
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
 
+        // View and projection (same)
         glm::mat4 view = glm::mat4(1.0f);
         view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
-        glm::mat4 projection = glm::mat4(1.0f);
-        projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-
-        unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
-        unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
-        unsigned int projLoc = glGetUniformLocation(shaderProgram, "projection");
-
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        // Upload uniforms (same)
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);  // New: Draw with indices
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+    // Cleanup
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
 
     glfwTerminate();
     return 0;

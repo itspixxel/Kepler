@@ -7,12 +7,12 @@
       "RelativeMoniker": "D:0:0:{0E3A8A7D-E363-4448-AAAA-3FF1E90435A8}|Kepler.vcxproj|solutionrelative:main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{0E3A8A7D-E363-4448-AAAA-3FF1E90435A8}|Kepler.vcxproj|E:\\Indie Projects\\OpenGL\\Kepler\\shaders\\fragment_shader.glsl||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{0E3A8A7D-E363-4448-AAAA-3FF1E90435A8}|Kepler.vcxproj|solutionrelative:shaders\\fragment_shader.glsl||{8B382828-6202-11D1-8870-0000F87579D2}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{0E3A8A7D-E363-4448-AAAA-3FF1E90435A8}|Kepler.vcxproj|E:\\Indie Projects\\OpenGL\\Kepler\\shaders\\vertex_shader.glsl||{8B382828-6202-11D1-8870-0000F87579D2}",
       "RelativeMoniker": "D:0:0:{0E3A8A7D-E363-4448-AAAA-3FF1E90435A8}|Kepler.vcxproj|solutionrelative:shaders\\vertex_shader.glsl||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{0E3A8A7D-E363-4448-AAAA-3FF1E90435A8}|Kepler.vcxproj|E:\\Indie Projects\\OpenGL\\Kepler\\shaders\\fragment_shader.glsl||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{0E3A8A7D-E363-4448-AAAA-3FF1E90435A8}|Kepler.vcxproj|solutionrelative:shaders\\fragment_shader.glsl||{8B382828-6202-11D1-8870-0000F87579D2}"
     }
   ],
   "DocumentGroupContainers": [
@@ -22,11 +22,24 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 2,
+          "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 0,
+              "Title": "main.cpp",
+              "DocumentMoniker": "E:\\Indie Projects\\OpenGL\\Kepler\\main.cpp",
+              "RelativeDocumentMoniker": "main.cpp",
+              "ToolTip": "E:\\Indie Projects\\OpenGL\\Kepler\\main.cpp",
+              "RelativeToolTip": "main.cpp",
+              "ViewState": "AgIAAJoAAAAAAAAAAAAAAJoAAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-08-10T16:37:40.019Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "vertex_shader.glsl",
               "DocumentMoniker": "E:\\Indie Projects\\OpenGL\\Kepler\\shaders\\vertex_shader.glsl",
               "RelativeDocumentMoniker": "shaders\\vertex_shader.glsl",
@@ -39,7 +52,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "fragment_shader.glsl",
               "DocumentMoniker": "E:\\Indie Projects\\OpenGL\\Kepler\\shaders\\fragment_shader.glsl",
               "RelativeDocumentMoniker": "shaders\\fragment_shader.glsl",
@@ -48,19 +61,6 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
               "WhenOpened": "2025-08-10T16:49:14.189Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "main.cpp",
-              "DocumentMoniker": "E:\\Indie Projects\\OpenGL\\Kepler\\main.cpp",
-              "RelativeDocumentMoniker": "main.cpp",
-              "ToolTip": "E:\\Indie Projects\\OpenGL\\Kepler\\main.cpp",
-              "RelativeToolTip": "main.cpp",
-              "ViewState": "AgIAAKYAAAAAAAAAAAAiwM0AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2025-08-10T16:37:40.019Z",
               "EditorCaption": ""
             }
           ]

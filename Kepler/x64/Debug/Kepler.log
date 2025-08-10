@@ -1,2 +1,3 @@
 ﻿  main.cpp
+E:\Indie Projects\OpenGL\Kepler\main.cpp(205,50): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
   Kepler.vcxproj -> E:\Indie Projects\OpenGL\Kepler\x64\Debug\Kepler.exe
