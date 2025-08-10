@@ -76,8 +76,8 @@ struct Camera {
     float targetTheta = 0.0f;
     float targetPhi = glm::radians(25.0f);
 
-    float minRadius = 5.0f;
-    float maxRadius = 80.0f;
+    float minRadius = 1.0f;
+    float maxRadius = 1000.0f;
     glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);
 
     // Smoothing parameters
@@ -105,7 +105,18 @@ struct Camera {
 };
 
 // Global camera instance
-Camera camera;
+Camera camera = {
+    25.0f, // radius
+    0.0f, // theta
+    glm::radians(25.0f), // phi
+    25.0f, // targetRadius
+    0.0f, // targetTheta
+    glm::radians(25.0f), // targetPhi
+    1.0f, // minRadius (allow close zoom)
+    1000.0f, // maxRadius (allow far zoom, beyond Pluto)
+    glm::vec3(0.0f, 0.0f, 0.0f), // target
+    8.0f // smoothingSpeed
+};
 
 // Mouse state
 bool mousePressed = false;
@@ -227,27 +238,21 @@ void generateSphere(float radius, int stacks, int sectors,
 }
 
 // Function to generate starry skybox sphere
-void generateStarField(float radius, int numStars, std::vector<float>& vertices) {
+void generateStarField(float innerRadius, float outerRadius, int numStars, std::vector<float>& vertices) {
     const float PI = 3.14159265359f;
-
-    // Seed for consistent star pattern
     srand(42);
-
     vertices.clear();
-
     for (int i = 0; i < numStars; ++i) {
         // Random spherical coordinates
         float theta = static_cast<float>(rand()) / RAND_MAX * PI;           // 0 to PI
         float phi = static_cast<float>(rand()) / RAND_MAX * 2.0f * PI;     // 0 to 2*PI
-
+        float radius = innerRadius + (static_cast<float>(rand()) / RAND_MAX) * (outerRadius - innerRadius);
         // Convert to Cartesian coordinates
         float x = radius * sin(theta) * cos(phi);
         float y = radius * sin(theta) * sin(phi);
         float z = radius * cos(theta);
-
         // Random brightness for stars (varying white intensity)
         float brightness = 0.3f + (static_cast<float>(rand()) / RAND_MAX) * 0.7f; // 0.3 to 1.0
-
         vertices.push_back(x);
         vertices.push_back(y);
         vertices.push_back(z);
@@ -325,7 +330,7 @@ int main() {
 
     // Generate star field
     std::vector<float> starVertices;
-    generateStarField(80.0f, 2000, starVertices);  // Large radius, many stars
+    generateStarField(0.0f, 1000.0f, 2000, starVertices);  // Stars from center to edge
 
     // Setup planet/sun VAO
     unsigned int VAO, VBO, EBO;
@@ -379,24 +384,46 @@ int main() {
     unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
     unsigned int projLoc = glGetUniformLocation(shaderProgram, "projection");
     unsigned int colorLoc = glGetUniformLocation(shaderProgram, "objectColor");
+    unsigned int cameraPosLoc = glGetUniformLocation(shaderProgram, "cameraPos");
 
-    // Define all planets with realistic relative data
-    // Distances scaled down significantly for visibility (real ratios maintained)
-    // Orbital speeds inverted (closer planets orbit faster)
+    // Real diameters (km): Sun=1,391,000, Mercury=4,880, Venus=12,104, Earth=12,742, Mars=6,779, Jupiter=139,820, Saturn=116,460, Uranus=50,724, Neptune=49,244, Pluto=2,377
+    // We'll use a scale factor of 100,000 for visualization
+    float sunScale = 13.91f; // 1,391,000 / 100,000
+    // Real average orbital radii (millions of km): Mercury=57.9, Venus=108.2, Earth=149.6, Mars=227.9, Jupiter=778.6, Saturn=1433.5, Uranus=2872.5, Neptune=4495.1, Pluto=5906.4
+    // We'll use a scale factor of 10 for visualization
     std::vector<Planet> planets = {
         // size, orbit, orbit_speed, rotation_speed, color, name, moons
-        {0.15f, 2.5f,  4.15f, 8.0f,  {0.8f, 0.7f, 0.6f}, "Mercury", {}},
-        {0.25f, 3.2f,  1.62f, 2.0f,  {1.0f, 0.8f, 0.4f}, "Venus", {}},
-        {0.28f, 4.0f,  1.00f, 4.0f,  {0.2f, 0.6f, 1.0f}, "Earth", {
-            // Earth's moon
-            {0.08f, 0.6f, 8.0f, 3.0f, {0.7f, 0.7f, 0.7f}, "Moon"}
+        {0.0488f, 5.79f,  4.15f, 8.0f,  {0.8f, 0.7f, 0.6f}, "Mercury", {}},
+        {0.1210f, 10.82f,  1.62f, 2.0f,  {1.0f, 0.8f, 0.4f}, "Venus", {}},
+        {0.1274f, 14.96f,  1.00f, 4.0f,  {0.2f, 0.6f, 1.0f}, "Earth", {
+            {0.0347f, 0.6f, 8.0f, 3.0f, {0.7f, 0.7f, 0.7f}, "Moon"}
         }},
-        {0.18f, 4.8f,  0.53f, 3.8f,  {1.0f, 0.4f, 0.2f}, "Mars", {}},
-        {0.85f, 7.0f,  0.084f, 6.0f, {1.0f, 0.8f, 0.6f}, "Jupiter", {}},
-        {0.75f, 9.5f,  0.034f, 5.5f, {1.0f, 0.9f, 0.7f}, "Saturn", {}},
-        {0.45f, 12.0f, 0.012f, 4.5f, {0.4f, 0.8f, 1.0f}, "Uranus", {}},
-        {0.42f, 15.0f, 0.006f, 4.2f, {0.2f, 0.4f, 1.0f}, "Neptune", {}},
-        {0.08f, 18.0f, 0.004f, 2.0f, {0.8f, 0.7f, 0.6f}, "Pluto", {}}
+        {0.0678f, 22.79f,  0.53f, 3.8f,  {1.0f, 0.4f, 0.2f}, "Mars", {
+            {0.0113f, 0.3f, 12.0f, 2.0f, {0.7f, 0.7f, 0.6f}, "Phobos"},
+            {0.0062f, 0.45f, 10.0f, 1.5f, {0.8f, 0.7f, 0.7f}, "Deimos"}
+        }},
+        {1.3982f, 77.86f,  0.084f, 6.0f, {1.0f, 0.8f, 0.6f}, "Jupiter", {
+            {0.0363f, 1.2f, 7.0f, 2.5f, {0.9f, 0.8f, 0.7f}, "Io"},
+            {0.0312f, 1.5f, 6.0f, 2.2f, {0.7f, 0.8f, 1.0f}, "Europa"},
+            {0.0520f, 2.0f, 5.5f, 2.0f, {0.8f, 0.9f, 1.0f}, "Ganymede"},
+            {0.0480f, 2.5f, 5.0f, 1.8f, {0.7f, 0.7f, 0.8f}, "Callisto"}
+        }},
+        {1.1646f, 143.35f,  0.034f, 5.5f, {1.0f, 0.9f, 0.7f}, "Saturn", {
+            {0.0515f, 1.5f, 6.0f, 2.0f, {0.9f, 0.8f, 0.6f}, "Titan"},
+            {0.0153f, 2.0f, 5.5f, 1.8f, {0.8f, 0.8f, 0.9f}, "Rhea"},
+            {0.0146f, 2.5f, 5.0f, 1.6f, {0.7f, 0.7f, 0.8f}, "Iapetus"},
+            {0.0112f, 3.0f, 4.5f, 1.4f, {0.8f, 0.9f, 1.0f}, "Dione"}
+        }},
+        {0.5072f, 287.25f, 0.012f, 4.5f, {0.4f, 0.8f, 1.0f}, "Uranus", {
+            {0.0157f, 1.0f, 5.0f, 1.5f, {0.7f, 0.8f, 1.0f}, "Titania"},
+            {0.0152f, 1.5f, 4.5f, 1.2f, {0.8f, 0.9f, 1.0f}, "Oberon"}
+        }},
+        {0.4924f, 449.51f, 0.006f, 4.2f, {0.2f, 0.4f, 1.0f}, "Neptune", {
+            {0.0135f, 1.2f, 4.0f, 1.2f, {0.7f, 0.8f, 1.0f}, "Triton"}
+        }},
+        {0.0238f, 590.64f, 0.004f, 2.0f, {0.8f, 0.7f, 0.6f}, "Pluto", {
+            {0.0121f, 0.5f, 3.0f, 1.0f, {0.7f, 0.7f, 0.8f}, "Charon"}
+        }}
     };
 
     // Timing for smooth interpolation
@@ -419,7 +446,7 @@ int main() {
 
         // Use camera system for view matrix
         glm::mat4 view = camera.getViewMatrix();
-        glm::mat4 projection = glm::perspective(glm::radians(60.0f), 1200.0f / 900.0f, 0.1f, 150.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(60.0f), 1200.0f / 900.0f, 0.1f, 1000.0f); // Far plane covers all orbits
 
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
@@ -427,6 +454,10 @@ int main() {
         // ===== RENDER STARS FIRST (SKYBOX) =====
         glDepthMask(GL_FALSE); // Don't write to depth buffer for skybox
         glBindVertexArray(starVAO);
+
+        // Set camera position uniform for star scaling
+        glm::vec3 camPos = camera.getPosition();
+        glUniform3f(cameraPosLoc, camPos.x, camPos.y, camPos.z);
 
         // Stars don't need model transformation, just use identity
         glm::mat4 starModel = glm::mat4(1.0f);
@@ -443,7 +474,7 @@ int main() {
         // Draw Sun at center
         glm::mat4 sunModel = glm::mat4(1.0f);
         sunModel = glm::rotate(sunModel, time * 0.5f, glm::vec3(0.0f, 1.0f, 0.0f));  // Slow self-rotation
-        sunModel = glm::scale(sunModel, glm::vec3(1.2f, 1.2f, 1.2f));  // Sun size
+        sunModel = glm::scale(sunModel, glm::vec3(sunScale));  // Sun size
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(sunModel));
         glUniform3f(colorLoc, 1.0f, 1.0f, 0.3f);  // Bright yellow
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
