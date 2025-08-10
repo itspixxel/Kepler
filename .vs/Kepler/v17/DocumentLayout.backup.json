@@ -30,9 +30,9 @@
               "Title": "main.cpp",
               "DocumentMoniker": "E:\\Indie Projects\\OpenGL\\Kepler\\main.cpp",
               "RelativeDocumentMoniker": "main.cpp",
-              "ToolTip": "E:\\Indie Projects\\OpenGL\\Kepler\\main.cpp",
-              "RelativeToolTip": "main.cpp",
-              "ViewState": "AgIAAM8AAAAAAAAAAAAiwN8AAAA1AAAAAAAAAA==",
+              "ToolTip": "E:\\Indie Projects\\OpenGL\\Kepler\\main.cpp*",
+              "RelativeToolTip": "main.cpp*",
+              "ViewState": "AgIAAAgBAAAAAAAAAAAiwBcBAAA1AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-08-10T16:37:40.019Z",
               "EditorCaption": ""
@@ -45,9 +45,10 @@
               "RelativeDocumentMoniker": "shaders\\vertex_shader.glsl",
               "ToolTip": "E:\\Indie Projects\\OpenGL\\Kepler\\shaders\\vertex_shader.glsl",
               "RelativeToolTip": "shaders\\vertex_shader.glsl",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-08-10T16:49:13.93Z"
+              "WhenOpened": "2025-08-10T16:49:13.93Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -59,7 +60,8 @@
               "RelativeToolTip": "shaders\\fragment_shader.glsl",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2025-08-10T16:49:14.189Z"
+              "WhenOpened": "2025-08-10T16:49:14.189Z",
+              "EditorCaption": ""
             }
           ]
         }

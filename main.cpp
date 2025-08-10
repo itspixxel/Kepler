@@ -122,6 +122,37 @@ void generateSphere(float radius, int stacks, int sectors,
     }
 }
 
+// Function to generate starry skybox sphere
+void generateStarField(float radius, int numStars, std::vector<float>& vertices) {
+    const float PI = 3.14159265359f;
+
+    // Seed for consistent star pattern
+    srand(42);
+
+    vertices.clear();
+
+    for (int i = 0; i < numStars; ++i) {
+        // Random spherical coordinates
+        float theta = static_cast<float>(rand()) / RAND_MAX * PI;           // 0 to PI
+        float phi = static_cast<float>(rand()) / RAND_MAX * 2.0f * PI;     // 0 to 2*PI
+
+        // Convert to Cartesian coordinates
+        float x = radius * sin(theta) * cos(phi);
+        float y = radius * sin(theta) * sin(phi);
+        float z = radius * cos(theta);
+
+        // Random brightness for stars (varying white intensity)
+        float brightness = 0.3f + (static_cast<float>(rand()) / RAND_MAX) * 0.7f; // 0.3 to 1.0
+
+        vertices.push_back(x);
+        vertices.push_back(y);
+        vertices.push_back(z);
+        vertices.push_back(brightness);  // Red
+        vertices.push_back(brightness);  // Green  
+        vertices.push_back(brightness);  // Blue
+    }
+}
+
 // Planet data structure
 struct Planet {
     float size;           // Relative size
@@ -164,6 +195,11 @@ int main() {
     std::vector<unsigned int> indices;
     generateSphere(1.0f, 64, 64, vertices, indices);
 
+    // Generate star field
+    std::vector<float> starVertices;
+    generateStarField(80.0f, 2000, starVertices);  // Large radius, many stars
+
+    // Setup planet/sun VAO
     unsigned int VAO, VBO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -185,10 +221,30 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    // Setup star field VAO
+    unsigned int starVAO, starVBO;
+    glGenVertexArrays(1, &starVAO);
+    glGenBuffers(1, &starVBO);
+
+    glBindVertexArray(starVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, starVBO);
+    glBufferData(GL_ARRAY_BUFFER, starVertices.size() * sizeof(float), starVertices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
     unsigned int shaderProgram = createShaderProgram("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl");
 
     glEnable(GL_DEPTH_TEST);
-    glClearColor(0.05f, 0.05f, 0.15f, 1.0f); // Dark space background
+    glClearColor(0.02f, 0.02f, 0.08f, 1.0f); // Very dark space background
+
+    // Enable point sprite for stars
+    glEnable(GL_PROGRAM_POINT_SIZE);
 
     // Get uniform locations once (for efficiency)
     unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
@@ -229,6 +285,20 @@ int main() {
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
+        // ===== RENDER STARS FIRST (SKYBOX) =====
+        glDepthMask(GL_FALSE); // Don't write to depth buffer for skybox
+        glBindVertexArray(starVAO);
+
+        // Stars don't need model transformation, just use identity
+        glm::mat4 starModel = glm::mat4(1.0f);
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(starModel));
+        glUniform3f(colorLoc, 1.0f, 1.0f, 1.0f); // White multiplier for stars
+
+        glDrawArrays(GL_POINTS, 0, starVertices.size() / 6); // Each star is 6 floats (pos + color)
+
+        glDepthMask(GL_TRUE); // Re-enable depth writing for planets
+
+        // ===== RENDER PLANETS =====
         glBindVertexArray(VAO);
 
         // Draw Sun at center
@@ -265,7 +335,9 @@ int main() {
     }
 
     glDeleteVertexArrays(1, &VAO);
+    glDeleteVertexArrays(1, &starVAO);
     glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &starVBO);
     glDeleteBuffers(1, &EBO);
     glDeleteProgram(shaderProgram);
 
