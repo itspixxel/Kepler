@@ -184,10 +184,13 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
         camera.targetRadius = camera.maxRadius;
 }
 
-// Function to generate sphere vertices and indices
+// Function to generate sphere vertices and indices WITH NORMALS
 void generateSphere(float radius, int stacks, int sectors,
     std::vector<float>& vertices, std::vector<unsigned int>& indices) {
     const float PI = 3.14159265359f;
+
+    vertices.clear();
+    indices.clear();
 
     // Generate unique vertices
     for (int i = 0; i <= stacks; ++i) {
@@ -197,18 +200,35 @@ void generateSphere(float radius, int stacks, int sectors,
 
         for (int j = 0; j <= sectors; ++j) {
             float phi = 2.0f * PI * static_cast<float>(j) / sectors;
-            float x = radius * sinTheta * std::cos(phi);
-            float y = radius * sinTheta * std::sin(phi);
-            float z = radius * cosTheta;
+            float sinPhi = std::sin(phi);
+            float cosPhi = std::cos(phi);
+
+            float x = radius * sinTheta * cosPhi;
+            float y = radius * cosTheta;
+            float z = radius * sinTheta * sinPhi;
+
+            // For lighting, we need proper normals
+            // For a sphere centered at origin, the normal is just the normalized position
+            float nx = sinTheta * cosPhi;
+            float ny = cosTheta;
+            float nz = sinTheta * sinPhi;
 
             // Color: Gradient based on position (normalize to 0-1)
             float r = (x + radius) / (2.0f * radius);
             float g = (y + radius) / (2.0f * radius);
             float b = (z + radius) / (2.0f * radius);
 
+            // Position
             vertices.push_back(x);
             vertices.push_back(y);
             vertices.push_back(z);
+
+            // Normal
+            vertices.push_back(nx);
+            vertices.push_back(ny);
+            vertices.push_back(nz);
+
+            // Color
             vertices.push_back(r);
             vertices.push_back(g);
             vertices.push_back(b);
@@ -270,6 +290,10 @@ struct Moon {
     float rotationSpeed;
     glm::vec3 color;
     const char* name;
+    // Material properties
+    float ambientStrength = 0.1f;
+    float specularStrength = 0.2f;
+    int shininess = 16;
 };
 
 // Planet data structure
@@ -281,6 +305,10 @@ struct Planet {
     glm::vec3 color;     // Planet color tint
     const char* name;    // For debugging
     std::vector<Moon> moons; // Moons for this planet
+    // Material properties
+    float ambientStrength = 0.1f;
+    float specularStrength = 0.3f;
+    int shininess = 32;
 };
 
 // Helper function to get planet position at given time
@@ -304,7 +332,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(1200, 900, "Solar System - Kepler", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1200, 900, "Solar System - Kepler with Lighting", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
@@ -323,14 +351,14 @@ int main() {
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetScrollCallback(window, scroll_callback);
 
-    // Generate sphere data (shared for all planets/sun)
+    // Generate sphere data (now with normals: pos + normal + color = 9 floats per vertex)
     std::vector<float> vertices;
     std::vector<unsigned int> indices;
     generateSphere(1.0f, 64, 64, vertices, indices);
 
     // Generate star field
     std::vector<float> starVertices;
-    generateStarField(0.0f, 1000.0f, 2000, starVertices);  // Stars from center to edge
+    generateStarField(100.0f, 1000.0f, 2000, starVertices);
 
     // Setup planet/sun VAO
     unsigned int VAO, VBO, EBO;
@@ -346,15 +374,22 @@ int main() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    // Position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+
+    // Normal attribute  
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+
+    // Color attribute
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    // Setup star field VAO
+    // Setup star field VAO (still 6 floats per vertex: pos + color)
     unsigned int starVAO, starVBO;
     glGenVertexArrays(1, &starVAO);
     glGenBuffers(1, &starVBO);
@@ -365,8 +400,8 @@ int main() {
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(2);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -379,51 +414,74 @@ int main() {
     // Enable point sprite for stars
     glEnable(GL_PROGRAM_POINT_SIZE);
 
-    // Get uniform locations once (for efficiency)
+    // Get uniform locations
     unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
     unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
     unsigned int projLoc = glGetUniformLocation(shaderProgram, "projection");
     unsigned int colorLoc = glGetUniformLocation(shaderProgram, "objectColor");
     unsigned int cameraPosLoc = glGetUniformLocation(shaderProgram, "cameraPos");
 
-    // Real diameters (km): Sun=1,391,000, Mercury=4,880, Venus=12,104, Earth=12,742, Mars=6,779, Jupiter=139,820, Saturn=116,460, Uranus=50,724, Neptune=49,244, Pluto=2,377
-    // We'll use a scale factor of 100,000 for visualization
-    float sunScale = 13.91f; // 1,391,000 / 100,000
-    // Real average orbital radii (millions of km): Mercury=57.9, Venus=108.2, Earth=149.6, Mars=227.9, Jupiter=778.6, Saturn=1433.5, Uranus=2872.5, Neptune=4495.1, Pluto=5906.4
-    // We'll use a scale factor of 10 for visualization
+    // Lighting uniform locations
+    unsigned int lightPosLoc = glGetUniformLocation(shaderProgram, "lightPos");
+    unsigned int lightColorLoc = glGetUniformLocation(shaderProgram, "lightColor");
+    unsigned int isEmissiveLoc = glGetUniformLocation(shaderProgram, "isEmissive");
+    unsigned int isPointLoc = glGetUniformLocation(shaderProgram, "isPoint");
+    unsigned int normalMatrixLoc = glGetUniformLocation(shaderProgram, "normalMatrix");
+    unsigned int ambientStrengthLoc = glGetUniformLocation(shaderProgram, "ambientStrength");
+    unsigned int specularStrengthLoc = glGetUniformLocation(shaderProgram, "specularStrength");
+    unsigned int shininessLoc = glGetUniformLocation(shaderProgram, "shininess");
+
+    // Planet data with enhanced material properties
+    float sunScale = 13.91f;
     std::vector<Planet> planets = {
-        // size, orbit, orbit_speed, rotation_speed, color, name, moons
-        {0.0488f, 5.79f,  4.15f, 8.0f,  {0.8f, 0.7f, 0.6f}, "Mercury", {}},
-        {0.1210f, 10.82f,  1.62f, 2.0f,  {1.0f, 0.8f, 0.4f}, "Venus", {}},
+        // Mercury - metallic surface, high specularity
+        {0.0488f, 5.79f,  4.15f, 8.0f,  {0.8f, 0.7f, 0.6f}, "Mercury", {}, 0.15f, 0.8f, 64},
+
+        // Venus - thick atmosphere, low specularity
+        {0.1210f, 10.82f,  1.62f, 2.0f,  {1.0f, 0.8f, 0.4f}, "Venus", {}, 0.2f, 0.1f, 8},
+
+        // Earth - mixed surface, moderate specularity (oceans)
         {0.1274f, 14.96f,  1.00f, 4.0f,  {0.2f, 0.6f, 1.0f}, "Earth", {
-            {0.0347f, 0.6f, 8.0f, 3.0f, {0.7f, 0.7f, 0.7f}, "Moon"}
-        }},
+            {0.0347f, 0.6f, 8.0f, 3.0f, {0.7f, 0.7f, 0.7f}, "Moon", 0.05f, 0.1f, 8}
+        }, 0.1f, 0.6f, 32},
+
+        // Mars - dusty surface, low specularity
         {0.0678f, 22.79f,  0.53f, 3.8f,  {1.0f, 0.4f, 0.2f}, "Mars", {
-            {0.0113f, 0.3f, 12.0f, 2.0f, {0.7f, 0.7f, 0.6f}, "Phobos"},
-            {0.0062f, 0.45f, 10.0f, 1.5f, {0.8f, 0.7f, 0.7f}, "Deimos"}
-        }},
+            {0.0113f, 0.3f, 12.0f, 2.0f, {0.7f, 0.7f, 0.6f}, "Phobos", 0.05f, 0.1f, 4},
+            {0.0062f, 0.45f, 10.0f, 1.5f, {0.8f, 0.7f, 0.7f}, "Deimos", 0.05f, 0.1f, 4}
+        }, 0.12f, 0.2f, 16},
+
+        // Jupiter - gas giant, moderate specularity
         {1.3982f, 77.86f,  0.084f, 6.0f, {1.0f, 0.8f, 0.6f}, "Jupiter", {
-            {0.0363f, 1.2f, 7.0f, 2.5f, {0.9f, 0.8f, 0.7f}, "Io"},
-            {0.0312f, 1.5f, 6.0f, 2.2f, {0.7f, 0.8f, 1.0f}, "Europa"},
-            {0.0520f, 2.0f, 5.5f, 2.0f, {0.8f, 0.9f, 1.0f}, "Ganymede"},
-            {0.0480f, 2.5f, 5.0f, 1.8f, {0.7f, 0.7f, 0.8f}, "Callisto"}
-        }},
+            {0.0363f, 1.2f, 7.0f, 2.5f, {0.9f, 0.8f, 0.7f}, "Io", 0.1f, 0.3f, 16},
+            {0.0312f, 1.5f, 6.0f, 2.2f, {0.7f, 0.8f, 1.0f}, "Europa", 0.08f, 0.9f, 128}, // Icy, very reflective
+            {0.0520f, 2.0f, 5.5f, 2.0f, {0.8f, 0.9f, 1.0f}, "Ganymede", 0.1f, 0.4f, 32},
+            {0.0480f, 2.5f, 5.0f, 1.8f, {0.7f, 0.7f, 0.8f}, "Callisto", 0.08f, 0.2f, 8}
+        }, 0.15f, 0.4f, 24},
+
+        // Saturn - gas giant with rings
         {1.1646f, 143.35f,  0.034f, 5.5f, {1.0f, 0.9f, 0.7f}, "Saturn", {
-            {0.0515f, 1.5f, 6.0f, 2.0f, {0.9f, 0.8f, 0.6f}, "Titan"},
-            {0.0153f, 2.0f, 5.5f, 1.8f, {0.8f, 0.8f, 0.9f}, "Rhea"},
-            {0.0146f, 2.5f, 5.0f, 1.6f, {0.7f, 0.7f, 0.8f}, "Iapetus"},
-            {0.0112f, 3.0f, 4.5f, 1.4f, {0.8f, 0.9f, 1.0f}, "Dione"}
-        }},
+            {0.0515f, 1.5f, 6.0f, 2.0f, {0.9f, 0.8f, 0.6f}, "Titan", 0.12f, 0.2f, 16},
+            {0.0153f, 2.0f, 5.5f, 1.8f, {0.8f, 0.8f, 0.9f}, "Rhea", 0.08f, 0.5f, 32},
+            {0.0146f, 2.5f, 5.0f, 1.6f, {0.7f, 0.7f, 0.8f}, "Iapetus", 0.1f, 0.3f, 16},
+            {0.0112f, 3.0f, 4.5f, 1.4f, {0.8f, 0.9f, 1.0f}, "Dione", 0.08f, 0.6f, 64}
+        }, 0.15f, 0.4f, 24},
+
+        // Uranus - ice giant, moderate specularity
         {0.5072f, 287.25f, 0.012f, 4.5f, {0.4f, 0.8f, 1.0f}, "Uranus", {
-            {0.0157f, 1.0f, 5.0f, 1.5f, {0.7f, 0.8f, 1.0f}, "Titania"},
-            {0.0152f, 1.5f, 4.5f, 1.2f, {0.8f, 0.9f, 1.0f}, "Oberon"}
-        }},
+            {0.0157f, 1.0f, 5.0f, 1.5f, {0.7f, 0.8f, 1.0f}, "Titania", 0.08f, 0.4f, 32},
+            {0.0152f, 1.5f, 4.5f, 1.2f, {0.8f, 0.9f, 1.0f}, "Oberon", 0.08f, 0.4f, 32}
+        }, 0.12f, 0.5f, 32},
+
+        // Neptune - ice giant, moderate specularity  
         {0.4924f, 449.51f, 0.006f, 4.2f, {0.2f, 0.4f, 1.0f}, "Neptune", {
-            {0.0135f, 1.2f, 4.0f, 1.2f, {0.7f, 0.8f, 1.0f}, "Triton"}
-        }},
+            {0.0135f, 1.2f, 4.0f, 1.2f, {0.7f, 0.8f, 1.0f}, "Triton", 0.08f, 0.6f, 64}
+        }, 0.12f, 0.5f, 32},
+
+        // Pluto - rocky/icy surface, low specularity
         {0.0238f, 590.64f, 0.004f, 2.0f, {0.8f, 0.7f, 0.6f}, "Pluto", {
-            {0.0121f, 0.5f, 3.0f, 1.0f, {0.7f, 0.7f, 0.8f}, "Charon"}
-        }}
+            {0.0121f, 0.5f, 3.0f, 1.0f, {0.7f, 0.7f, 0.8f}, "Charon", 0.08f, 0.3f, 16}
+        }, 0.1f, 0.2f, 8}
     };
 
     // Timing for smooth interpolation
@@ -446,91 +504,108 @@ int main() {
 
         // Use camera system for view matrix
         glm::mat4 view = camera.getViewMatrix();
-        glm::mat4 projection = glm::perspective(glm::radians(60.0f), 1200.0f / 900.0f, 0.1f, 1000.0f); // Far plane covers all orbits
+        glm::mat4 projection = glm::perspective(glm::radians(60.0f), 1200.0f / 900.0f, 0.1f, 1000.0f);
 
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        // Set lighting uniforms (Sun as light source)
+        glUniform3f(lightPosLoc, 0.0f, 0.0f, 0.0f);  // Sun at origin
+        glUniform3f(lightColorLoc, 1.0f, 1.0f, 0.8f); // Slightly warm white light
+
+        // Set camera position for lighting calculations
+        glm::vec3 camPos = camera.getPosition();
+        glUniform3f(cameraPosLoc, camPos.x, camPos.y, camPos.z);
 
         // ===== RENDER STARS FIRST (SKYBOX) =====
         glDepthMask(GL_FALSE); // Don't write to depth buffer for skybox
         glBindVertexArray(starVAO);
 
-        // Set camera position uniform for star scaling
-        glm::vec3 camPos = camera.getPosition();
-        glUniform3f(cameraPosLoc, camPos.x, camPos.y, camPos.z);
+        glUniform1i(isPointLoc, GL_TRUE);
+        glUniform1i(isEmissiveLoc, GL_FALSE);
 
         // Stars don't need model transformation, just use identity
         glm::mat4 starModel = glm::mat4(1.0f);
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(starModel));
         glUniform3f(colorLoc, 1.0f, 1.0f, 1.0f); // White multiplier for stars
 
-        glDrawArrays(GL_POINTS, 0, starVertices.size() / 6); // Each star is 6 floats (pos + color)
+        glDrawArrays(GL_POINTS, 0, starVertices.size() / 6);
 
         glDepthMask(GL_TRUE); // Re-enable depth writing for planets
 
         // ===== RENDER PLANETS =====
         glBindVertexArray(VAO);
+        glUniform1i(isPointLoc, GL_FALSE);
 
-        // Draw Sun at center
+        // === DRAW SUN ===
+        glUniform1i(isEmissiveLoc, GL_TRUE);  // Sun is emissive
         glm::mat4 sunModel = glm::mat4(1.0f);
-        sunModel = glm::rotate(sunModel, time * 0.5f, glm::vec3(0.0f, 1.0f, 0.0f));  // Slow self-rotation
-        sunModel = glm::scale(sunModel, glm::vec3(sunScale));  // Sun size
+        sunModel = glm::rotate(sunModel, time * 0.5f, glm::vec3(0.0f, 1.0f, 0.0f));
+        sunModel = glm::scale(sunModel, glm::vec3(sunScale));
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(sunModel));
         glUniform3f(colorLoc, 1.0f, 1.0f, 0.3f);  // Bright yellow
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
-        // Draw all planets and their moons
-        for (const auto& planet : planets) {
-            // Calculate planet's world position for moon orbits
-            glm::vec3 planetWorldPos = getPlanetPosition(planet, time);
+        // === DRAW PLANETS AND MOONS ===
+        glUniform1i(isEmissiveLoc, GL_FALSE);  // Planets are not emissive
 
+        for (const auto& planet : planets) {
             // === DRAW PLANET ===
             glm::mat4 planetModel = glm::mat4(1.0f);
 
             // Orbital rotation around sun
             planetModel = glm::rotate(planetModel, time * planet.orbitSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
-
             // Position at orbit distance
             planetModel = glm::translate(planetModel, glm::vec3(planet.orbitRadius, 0.0f, 0.0f));
-
             // Self rotation
             planetModel = glm::rotate(planetModel, time * planet.rotationSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
-
             // Scale the planet
             planetModel = glm::scale(planetModel, glm::vec3(planet.size));
 
+            // Calculate normal matrix for proper lighting
+            glm::mat4 normalMatrix = glm::transpose(glm::inverse(planetModel));
+
+            // Set uniforms
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(planetModel));
+            glUniformMatrix4fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
             glUniform3f(colorLoc, planet.color.x, planet.color.y, planet.color.z);
+
+            // Set material properties
+            glUniform1f(ambientStrengthLoc, planet.ambientStrength);
+            glUniform1f(specularStrengthLoc, planet.specularStrength);
+            glUniform1i(shininessLoc, planet.shininess);
+
             glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
             // === DRAW MOONS ===
             for (const auto& moon : planet.moons) {
                 glm::mat4 moonModel = glm::mat4(1.0f);
 
-                // Start with identity
-                // First, orbit around the planet
+                // Moon's orbit around planet
                 moonModel = glm::rotate(moonModel, time * moon.orbitSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
-
-                // Position moon at its orbit distance from planet center
                 moonModel = glm::translate(moonModel, glm::vec3(moon.orbitRadius, 0.0f, 0.0f));
-
-                // Self rotation of moon
                 moonModel = glm::rotate(moonModel, time * moon.rotationSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
-
-                // Scale the moon
                 moonModel = glm::scale(moonModel, glm::vec3(moon.size));
 
-                // Now we need to position this entire moon system relative to the planet
-                // We do this by applying the same transformations that positioned the planet
+                // Position relative to planet
                 glm::mat4 planetTransform = glm::mat4(1.0f);
                 planetTransform = glm::rotate(planetTransform, time * planet.orbitSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
                 planetTransform = glm::translate(planetTransform, glm::vec3(planet.orbitRadius, 0.0f, 0.0f));
 
-                // Combine: planet position + moon's local orbit
                 moonModel = planetTransform * moonModel;
 
+                // Calculate normal matrix for moon
+                glm::mat4 moonNormalMatrix = glm::transpose(glm::inverse(moonModel));
+
                 glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(moonModel));
+                glUniformMatrix4fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(moonNormalMatrix));
                 glUniform3f(colorLoc, moon.color.x, moon.color.y, moon.color.z);
+
+                // Set moon material properties
+                glUniform1f(ambientStrengthLoc, moon.ambientStrength);
+                glUniform1f(specularStrengthLoc, moon.specularStrength);
+                glUniform1i(shininessLoc, moon.shininess);
+
                 glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
             }
         }

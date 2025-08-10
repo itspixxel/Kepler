@@ -3,8 +3,9 @@ E:\Indie Projects\OpenGL\Kepler\main.cpp(139,23): warning C4244: 'initializing':
 E:\Indie Projects\OpenGL\Kepler\main.cpp(140,23): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
 E:\Indie Projects\OpenGL\Kepler\main.cpp(157,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
 E:\Indie Projects\OpenGL\Kepler\main.cpp(158,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-E:\Indie Projects\OpenGL\Kepler\main.cpp(467,56): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
-E:\Indie Projects\OpenGL\Kepler\main.cpp(480,50): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
-E:\Indie Projects\OpenGL\Kepler\main.cpp(504,54): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
-E:\Indie Projects\OpenGL\Kepler\main.cpp(534,58): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(532,56): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(547,50): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(578,54): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(609,58): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
+LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; use /NODEFAULTLIB:library
   Kepler.vcxproj -> E:\Indie Projects\OpenGL\Kepler\x64\Debug\Kepler.exe
