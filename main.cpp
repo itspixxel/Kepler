@@ -257,6 +257,16 @@ void generateStarField(float radius, int numStars, std::vector<float>& vertices)
     }
 }
 
+// Moon structure
+struct Moon {
+    float size;
+    float orbitRadius;    // Distance from planet
+    float orbitSpeed;     // Speed around planet
+    float rotationSpeed;
+    glm::vec3 color;
+    const char* name;
+};
+
 // Planet data structure
 struct Planet {
     float size;           // Relative size
@@ -265,7 +275,18 @@ struct Planet {
     float rotationSpeed;  // Self-rotation speed
     glm::vec3 color;     // Planet color tint
     const char* name;    // For debugging
+    std::vector<Moon> moons; // Moons for this planet
 };
+
+// Helper function to get planet position at given time
+glm::vec3 getPlanetPosition(const Planet& planet, float time) {
+    float angle = time * planet.orbitSpeed;
+    return glm::vec3(
+        planet.orbitRadius * cos(angle),
+        0.0f,
+        planet.orbitRadius * sin(angle)
+    );
+}
 
 // ==================== MAIN FUNCTION ==================== //
 int main() {
@@ -363,16 +384,19 @@ int main() {
     // Distances scaled down significantly for visibility (real ratios maintained)
     // Orbital speeds inverted (closer planets orbit faster)
     std::vector<Planet> planets = {
-        // size, orbit, orbit_speed, rotation_speed, color, name
-        {0.15f, 2.5f,  4.15f, 8.0f,  {0.8f, 0.7f, 0.6f}, "Mercury"},
-        {0.25f, 3.2f,  1.62f, 2.0f,  {1.0f, 0.8f, 0.4f}, "Venus"},
-        {0.28f, 4.0f,  1.00f, 4.0f,  {0.2f, 0.6f, 1.0f}, "Earth"},
-        {0.18f, 4.8f,  0.53f, 3.8f,  {1.0f, 0.4f, 0.2f}, "Mars"},
-        {0.85f, 7.0f,  0.084f, 6.0f, {1.0f, 0.8f, 0.6f}, "Jupiter"},
-        {0.75f, 9.5f,  0.034f, 5.5f, {1.0f, 0.9f, 0.7f}, "Saturn"},
-        {0.45f, 12.0f, 0.012f, 4.5f, {0.4f, 0.8f, 1.0f}, "Uranus"},
-        {0.42f, 15.0f, 0.006f, 4.2f, {0.2f, 0.4f, 1.0f}, "Neptune"},
-        {0.08f, 18.0f, 0.004f, 2.0f, {0.8f, 0.7f, 0.6f}, "Pluto"}
+        // size, orbit, orbit_speed, rotation_speed, color, name, moons
+        {0.15f, 2.5f,  4.15f, 8.0f,  {0.8f, 0.7f, 0.6f}, "Mercury", {}},
+        {0.25f, 3.2f,  1.62f, 2.0f,  {1.0f, 0.8f, 0.4f}, "Venus", {}},
+        {0.28f, 4.0f,  1.00f, 4.0f,  {0.2f, 0.6f, 1.0f}, "Earth", {
+            // Earth's moon
+            {0.08f, 0.6f, 8.0f, 3.0f, {0.7f, 0.7f, 0.7f}, "Moon"}
+        }},
+        {0.18f, 4.8f,  0.53f, 3.8f,  {1.0f, 0.4f, 0.2f}, "Mars", {}},
+        {0.85f, 7.0f,  0.084f, 6.0f, {1.0f, 0.8f, 0.6f}, "Jupiter", {}},
+        {0.75f, 9.5f,  0.034f, 5.5f, {1.0f, 0.9f, 0.7f}, "Saturn", {}},
+        {0.45f, 12.0f, 0.012f, 4.5f, {0.4f, 0.8f, 1.0f}, "Uranus", {}},
+        {0.42f, 15.0f, 0.006f, 4.2f, {0.2f, 0.4f, 1.0f}, "Neptune", {}},
+        {0.08f, 18.0f, 0.004f, 2.0f, {0.8f, 0.7f, 0.6f}, "Pluto", {}}
     };
 
     // Timing for smooth interpolation
@@ -424,25 +448,60 @@ int main() {
         glUniform3f(colorLoc, 1.0f, 1.0f, 0.3f);  // Bright yellow
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
-        // Draw all planets
+        // Draw all planets and their moons
         for (const auto& planet : planets) {
+            // Calculate planet's world position for moon orbits
+            glm::vec3 planetWorldPos = getPlanetPosition(planet, time);
+
+            // === DRAW PLANET ===
             glm::mat4 planetModel = glm::mat4(1.0f);
-
-            // Scale the planet
-            planetModel = glm::scale(planetModel, glm::vec3(planet.size));
-
-            // Self rotation
-            planetModel = glm::rotate(planetModel, time * planet.rotationSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
-
-            // Position at orbit distance
-            planetModel = glm::translate(planetModel, glm::vec3(planet.orbitRadius / planet.size, 0.0f, 0.0f));
 
             // Orbital rotation around sun
             planetModel = glm::rotate(planetModel, time * planet.orbitSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
 
+            // Position at orbit distance
+            planetModel = glm::translate(planetModel, glm::vec3(planet.orbitRadius, 0.0f, 0.0f));
+
+            // Self rotation
+            planetModel = glm::rotate(planetModel, time * planet.rotationSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
+
+            // Scale the planet
+            planetModel = glm::scale(planetModel, glm::vec3(planet.size));
+
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(planetModel));
             glUniform3f(colorLoc, planet.color.x, planet.color.y, planet.color.z);
             glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+
+            // === DRAW MOONS ===
+            for (const auto& moon : planet.moons) {
+                glm::mat4 moonModel = glm::mat4(1.0f);
+
+                // Start with identity
+                // First, orbit around the planet
+                moonModel = glm::rotate(moonModel, time * moon.orbitSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
+
+                // Position moon at its orbit distance from planet center
+                moonModel = glm::translate(moonModel, glm::vec3(moon.orbitRadius, 0.0f, 0.0f));
+
+                // Self rotation of moon
+                moonModel = glm::rotate(moonModel, time * moon.rotationSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
+
+                // Scale the moon
+                moonModel = glm::scale(moonModel, glm::vec3(moon.size));
+
+                // Now we need to position this entire moon system relative to the planet
+                // We do this by applying the same transformations that positioned the planet
+                glm::mat4 planetTransform = glm::mat4(1.0f);
+                planetTransform = glm::rotate(planetTransform, time * planet.orbitSpeed, glm::vec3(0.0f, 1.0f, 0.0f));
+                planetTransform = glm::translate(planetTransform, glm::vec3(planet.orbitRadius, 0.0f, 0.0f));
+
+                // Combine: planet position + moon's local orbit
+                moonModel = planetTransform * moonModel;
+
+                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(moonModel));
+                glUniform3f(colorLoc, moon.color.x, moon.color.y, moon.color.z);
+                glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+            }
         }
 
         glfwSwapBuffers(window);
