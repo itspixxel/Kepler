@@ -49,5 +49,11 @@
     <None Include="shaders\vertex_shader.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="shaders\line_vertex.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\line_fragment.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

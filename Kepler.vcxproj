@@ -161,6 +161,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\fragment_shader.glsl" />
+    <None Include="shaders\line_fragment.glsl" />
+    <None Include="shaders\line_vertex.glsl" />
     <None Include="shaders\vertex_shader.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,11 +1,9 @@
 ﻿  main.cpp
-E:\Indie Projects\OpenGL\Kepler\main.cpp(139,23): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-E:\Indie Projects\OpenGL\Kepler\main.cpp(140,23): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-E:\Indie Projects\OpenGL\Kepler\main.cpp(157,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-E:\Indie Projects\OpenGL\Kepler\main.cpp(158,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-E:\Indie Projects\OpenGL\Kepler\main.cpp(439,10): warning C4305: 'initializing': truncation from 'double' to 'float'
-E:\Indie Projects\OpenGL\Kepler\main.cpp(533,56): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
-E:\Indie Projects\OpenGL\Kepler\main.cpp(548,50): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
-E:\Indie Projects\OpenGL\Kepler\main.cpp(579,54): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
-E:\Indie Projects\OpenGL\Kepler\main.cpp(610,58): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(196,23): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(197,23): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(211,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(212,13): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(809,56): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(827,50): warning C4267: 'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
+E:\Indie Projects\OpenGL\Kepler\main.cpp(842,59): warning C4267: 'argument': conversion from 'size_t' to 'unsigned int', possible loss of data
   Kepler.vcxproj -> E:\Indie Projects\OpenGL\Kepler\x64\Debug\Kepler.exe
